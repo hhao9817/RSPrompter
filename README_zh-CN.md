@@ -112,7 +112,7 @@
 
 注解：如果你对 PyTorch 有经验并且已经安装了它，你可以直接跳转到下一小节。否则，你可以按照下述步骤进行准备。
 
-<details>
+<details open>
 
 **步骤 0**：安装 [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/index.html)。
 
@@ -171,7 +171,7 @@ cd RSPrompter
 
 ## 数据集准备
 
-<details>
+<details open>
 
 ### 基础实例分割数据集
 
@@ -228,7 +228,7 @@ ${DATASET_ROOT} # 数据集根目录，例如：/home/username/data/NWPU
 
 我们提供了论文中使用的 SAM-based 模型的配置文件，你可以在 `configs/rsprompter` 文件夹中找到它们。Config 文件完全与 MMDetection 保持一致的 API 接口及使用方法。下面我们提供了一些主要参数的解析。如果你想了解更多参数的含义，可以参考 [MMDetection 文档](https://mmdetection.readthedocs.io/zh-cn/latest/user_guides/config.html)。
 
-<details>
+<details open>
 
 **参数解析**：
 
@@ -270,7 +270,7 @@ sh ./tools/dist_train.sh configs/rsprompter/xxx.py ${GPU_NUM}  # xxx.py 为你�
 
 ### 其他实例分割模型
 
-<details>
+<details open>
 
 如果你想使用其他实例分割模型，可以参考 [MMDetection](https://github.com/open-mmlab/mmdetection/tree/main) 来进行模型的训练，也可以将其Config文件放入本项目的 `configs` 文件夹中，然后按照上述的方法进行训练。
 
@@ -311,7 +311,7 @@ python demo/image_demo.py ${IMAGE_DIR}  configs/rsprompter/xxx.py --weights ${CH
 
 ## 常见问题
 
-<details>
+<details open>
 
 我们在这里列出了使用时的一些常见问题及其相应的解决方案。如果您发现有一些问题被遗漏，请随时提 PR 丰富这个列表。如果您无法在此获得帮助，请使用[issue](https://github.com/KyanChen/RSPrompter/issues)来寻求帮助。请在模板中填写所有必填信息，这有助于我们更快定位问题。
 
@@ -362,6 +362,32 @@ python zero_to_fp32.py . $SAVE_CHECKPOINT_NAME -t $CHECKPOINT_DIR  # $SAVE_CHECK
 
 如果您无法访问和下载HuggingFace Spaces上的模型，请使用[下载脚本](tools/rsprompter/download_hf_sam_pretrain_ckpt.py)来下载。
 请参考[官方处理方式](https://huggingface.co/docs/transformers/installation#offline-mode)。
+
+### 6. 分割loss一直为0或者出现Nan
+
+由于batch size过小导致训练不稳定，有以下不同的解决方案，任选其一即可：
+
+1. 增大batch size为2或者4（可能会出现显存不够）；
+
+2. 采用梯度累加方法（修改Config文件中的optim_wrapper）；
+```
+optim_wrapper = dict(
+type='AmpOptimWrapper',
+dtype='float16', # 修改为bfloat16 更稳定
+optimizer=dict(
+    type='AdamW',
+    lr=base_lr,
+    weight_decay=0.05),
+accumulative_counts=4  # 需要增加的配置，修改为4或其他大于1的数
+)
+```
+    
+3. 取消解码时Prompter中正余弦变换（修改Config文件中的with_sincos=False）；
+    
+4. 采用输入图像为512的peft配置，增大batch size。
+
+
+
 
 </details>
 
