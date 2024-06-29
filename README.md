@@ -111,7 +111,7 @@ We recommend using Miniconda for installation. The following command will create
 
 Note: If you have experience with PyTorch and have already installed it, you can skip to the next section. Otherwise, you can follow these steps to prepare.
 
-<details>
+<details open>
 
 **Step 0**: Install [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/index.html).
 
@@ -173,7 +173,7 @@ cd RSPrompter
 
 ## Dataset Preparation
 
-<details>
+<details open>
 
 ### Basic Instance Segmentation Dataset
 
@@ -230,7 +230,7 @@ If you want to use other datasets, you can refer to [MMDetection documentation](
 
 We provide the configuration files of the SAM-based models used in the paper, which can be found in the `configs/rsprompter` folder. The Config file is completely consistent with the API interface and usage method of MMDetection. Below we provide an analysis of some of the main parameters. If you want to know more about the meaning of the parameters, you can refer to the [MMDetection documentation](https://mmdetection.readthedocs.io/zh-cn/latest/user_guides/config.html).
 
-<details>
+<details open>
 
 **Parameter Parsing**:
 
@@ -272,7 +272,7 @@ sh ./tools/dist_train.sh configs/rsprompter/xxx.py ${GPU_NUM}  # xxx.py is the c
 
 ### Other Instance Segmentation Models
 
-<details>
+<details open>
 
 If you want to use other instance segmentation models, you can refer to [MMDetection](https://github.com/open-mmlab/mmdetection/tree/main) to train the models, or you can put their Config files in the `configs` folder of this project, and then train them according to the above methods.
 
@@ -312,7 +312,7 @@ python demo/image_demo.py ${IMAGE_DIR}  configs/rsprompter/xxx.py --weights ${CH
 
 ## Common Problems
 
-<details>
+<details open>
 
 We have listed some common problems and their corresponding solutions here. If you find that some problems are missing, please feel free to provide PR to enrich this list. If you cannot get help here, please use [issue](https://github.com/KyanChen/RSPrompter/issues) to seek help. Please fill in all the required information in the template, which will help us locate the problem faster.
 
@@ -366,6 +366,30 @@ If you encounter the error `Bad substitution` when running `dist_train.sh`, plea
 If you are unable to access and download the model on HuggingFace Spaces, please use the [download script](tools/rsprompter/download_hf_sam_pretrain_ckpt.py) to download.
 Please refer to the [official processing method](https://huggingface.co/docs/transformers/installation#offline-mode).
 
+Here is the translation into English:
+
+### 6. The segmentation loss is always 0 or results in NaN (Not a Number)
+
+Due to a small batch size leading to unstable training, there are several different solutions below. You can choose any one of them:
+
+1. Increase the batch size to 2 or 4 (there might be insufficient GPU memory);
+
+2. Use the gradient accumulation method (modify the `optim_wrapper` in the Config file):
+```python
+optim_wrapper = dict(
+    type='AmpOptimWrapper',
+    dtype='float16', # Change to 'bfloat16' for more stability
+    optimizer=dict(
+        type='AdamW',
+        lr=base_lr,
+        weight_decay=0.05),
+    accumulative_counts=4  # Additional configuration needed, change to 4 or other numbers greater than 1
+)
+```
+
+3. Cancel the sine and cosine transformation in the Prompter during decoding (modify `with_sincos=False` in the Config file);
+
+4. Use a peft configuration with an input image size of 512 and increase the batch size.
 
 
 </details>
